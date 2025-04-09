@@ -1,0 +1,53 @@
+{
+  "name": "rena-initia-sdk",
+  "version": "1.0.0",
+  "description": "SDK for interacting with the Initia blockchain",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "prepare": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "initia",
+    "blockchain",
+    "sdk",
+    "web3"
+  ],
+  "author": "Rena",
+  "license": "MIT",
+  "dependencies": {
+    "@initia/initia.js": "^1.0.4",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@typescript-eslint/parser": "^7.1.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "rimraf": "^5.0.10",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/rena-initia-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/rena-initia-sdk/issues"
+  },
+  "homepage": "https://github.com/yourusername/rena-initia-sdk#readme"
+}
