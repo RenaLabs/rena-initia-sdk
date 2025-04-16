@@ -1,4 +1,4 @@
-import { MsgExecute, MsgSend } from '@initia/initia.js'
+import { MsgExecute, MsgInitiateTokenDeposit, MsgSend, Coin, MsgInitiateTokenWithdrawal } from '@initia/initia.js'
 import { toBigInt } from "ethers";
 
 /**
@@ -52,6 +52,36 @@ export function sendToken(
     )
 
     return sendMsg;
+}
+
+export function bridgeToken(
+    sender: string,
+    bridgeId: number,
+    to: string,
+    amount: Coin,
+) {
+    const msg = new MsgInitiateTokenDeposit(
+        sender,
+        bridgeId,
+        to,
+        amount
+    )
+
+    return msg;
+}
+
+export function bridgeOutToken(
+    sender: string,
+    to: string,
+    amount: Coin,
+) {
+    const msg = new MsgInitiateTokenWithdrawal(
+        sender,
+        to,
+        amount
+    )
+
+    return msg;
 }
 
 /**
