@@ -1,5 +1,5 @@
-import { RESTClient } from '@initia/initia.js'
-import { MnemonicKey, Wallet } from '@initia/initia.js'
+import { RESTClient, Wallet, MnemonicKey } from '@initia/initia.js'
+import { getChainConfig } from './config'
 
 /**
  * Rena Initia SDK
@@ -22,13 +22,16 @@ export class InitiaSDK {
      * Creates a new instance of the InitiaSDK
      * 
      * @param mnemonic - The mnemonic phrase for the wallet
+     * @param chainId - The chain ID for the Initia blockchain
      * @param rpcUrl - The RPC URL for the Initia blockchain (defaults to testnet)
      */
-    constructor(mnemonic: string, rpcUrl: string) {
+    constructor(mnemonic: string, chainId: string, rpcUrl: string) {
+        const config = getChainConfig(chainId);
+
         this.rest = new RESTClient(rpcUrl, {
-            chainId: 'initiation-2',
-            gasPrices: '0.15uinit', // default gas prices
-            gasAdjustment: '1.75',  // default gas adjustment for fee estimation
+            chainId: chainId,
+            gasPrices: config.gasPrices,
+            gasAdjustment: config.gasAdjustment,
         })
 
         this.key = new MnemonicKey({

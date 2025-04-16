@@ -1,15 +1,20 @@
 import { InitiaSDK } from './src/InitiaSDK';
 import dotenv from 'dotenv';
-import { sendToken, uploadSignature, uuidToU256, u256ToUuid } from './src/tee';
-import { bcs } from '@initia/initia.js';
+import { sendToken, uploadSignature, uuidToU256, u256ToUuid, bridgeToken, bridgeOutToken } from './src/tee';
+import { bcs, Coin } from '@initia/initia.js';
+import { getChainConfig } from './src/config';
 
 // Load environment variables from .env file
 dotenv.config();
 
+// Default chain ID
+const mainChainId = 'initiation-2';
+
 // Initialize SDK with mnemonic and RPC URL
 const sdk = new InitiaSDK(
     process.env.MNEMONIC ?? '',
-    process.env.RPC_URL ?? 'https://rest.testnet.initia.xyz'
+    mainChainId,
+    getChainConfig(mainChainId).rpcUrl
 );
 
 /**
@@ -124,6 +129,81 @@ async function uploadSignatureExample() {
 }
 
 /**
+ * Example 4: Bridge token
+ */
+async function bridgeTokenExample() {
+    try {
+        const senderAddress = await sdk.getAccountAddress();
+        const bridgeId = 1152;
+        const to = 'init1dflp5l3p5y6zhh7tnus60j2w88mqhp6p2tpncs';
+        const amount = new Coin('uinit', '1000000');
+
+        const msg = bridgeToken(
+            senderAddress,
+            bridgeId,
+            to,
+            amount
+        );
+
+        const signedTx = await sdk.wallet.createAndSignTx({
+            msgs: [msg],
+            memo: 'Sample token bridge',
+        });
+
+        const result = await sdk.rest.tx.broadcast(signedTx);
+        console.log('Transaction result:', result);
+
+        return result;
+    } catch (error) {
+        console.error('Error bridging token:', error);
+        throw error;
+    }
+}
+
+/**
+ * Example 5: Bridge out token, usually takes 7 days to complete
+ */
+async function bridgeOutTokenExample() {
+    try {
+        // Switch to L2
+        const l2ChainId = 'nuwa-rollup-1';
+        const l2Config = getChainConfig(l2ChainId);
+
+        const sdk = new InitiaSDK(
+            process.env.MNEMONIC ?? '',
+            l2ChainId,
+            l2Config.rpcUrl
+        );
+
+        const senderAddress = await sdk.getAccountAddress();
+
+        const to = 'init1dflp5l3p5y6zhh7tnus60j2w88mqhp6p2tpncs';
+        const l2Token = 'l2/6df67ba2b8890ef45c525bdccac4d69e48502e9ee482fac8cc6eb9036c2fb364';
+        const amount = new Coin(l2Token, '10000');
+
+        const msg = bridgeOutToken(
+            senderAddress,
+            to,
+            amount
+        );
+
+        const signedTx = await sdk.wallet.createAndSignTx({
+            msgs: [msg],
+            memo: 'Sample token bridge out',
+        });
+
+        const result = await sdk.rest.tx.broadcast(signedTx);
+        console.log('Transaction result:', result);
+
+        return result;
+    } catch (error) {
+        console.error('Error bridging out token:', error);
+        throw error;
+    }
+}
+
+
+/**
  * Main function to run examples
  */
 async function main() {
@@ -143,6 +223,16 @@ async function main() {
         console.log('\n--- Example 3: Upload Signature with UUID ---');
         // Uncomment to execute
         await uploadSignatureExample();
+
+        // Example 4: Bridge token
+        console.log('\n--- Example 4: Bridge Token ---');
+        // Execute bridge token example on main chain
+        await bridgeTokenExample();
+
+        // Example 5: Bridge out token
+        console.log('\n--- Example 5: Bridge Out Token ---');
+        // Execute bridge out token example on L2 chain
+        await bridgeOutTokenExample();
 
         console.log('\n=== Examples completed ===');
     } catch (error) {
