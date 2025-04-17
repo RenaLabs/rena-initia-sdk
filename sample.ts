@@ -202,6 +202,71 @@ async function bridgeOutTokenExample() {
     }
 }
 
+/**
+ * Example 6: Verify a signature on L2
+ */
+async function verifySignatureExample() {
+    try {
+        const l2ChainId = 'nuwa-rollup-1';
+        const l2Config = getChainConfig(l2ChainId);
+
+        const sdk = new InitiaSDK(
+            process.env.MNEMONIC ?? '',
+            l2ChainId,
+            l2Config.rpcUrl
+        );
+
+        const senderAddress = await sdk.getAccountAddress();
+        const bridgeId = 1152;
+        const contractAddress = '0x6f0455e70ee4b792897d552a3e5aa6e89e110782';
+        const module = 'agent_tweet_event_aggregate';
+        const functionName = 'create';
+
+        // Create a UUID and convert to U256
+        const uuid = 'f57956ae-51bf-4ee6-9f5c-b6eeec2bf623'; //This is unique for storing in smart contract
+        const requestIdInU256 = uuidToU256(uuid);
+
+        console.log('UUID:', uuid);
+        console.log('U256:', requestIdInU256);
+        console.log('UUID (reconstructed):', u256ToUuid(requestIdInU256));
+
+        // Create message content
+        const encoder = new TextEncoder();
+        const messageContent = 'Hello Initia';
+
+        // Create upload signature message
+        const msg = uploadSignature(
+            senderAddress,
+            contractAddress,
+            module,
+            functionName,
+            [], // typeArgs
+            [
+                bcs.u256().serialize(requestIdInU256).toBase64(),
+                bcs.u64().serialize(2112).toBase64(),
+                bcs
+                    .vector(bcs.u8())
+                    .serialize([...encoder.encode(messageContent)])
+                    .toBase64(),
+            ]
+        );
+
+        // Create and sign transaction
+        const signedTx = await sdk.wallet.createAndSignTx({
+            msgs: [msg],
+            memo: 'Sample signature upload',
+        });
+
+        // Broadcast transaction
+        const result = await sdk.rest.tx.broadcast(signedTx);
+        console.log('Transaction result:', result);
+
+
+    } catch (error) {
+        console.error('Error verifying signature:', error);
+        throw error;
+    }
+}
 
 /**
  * Main function to run examples
@@ -233,6 +298,11 @@ async function main() {
         console.log('\n--- Example 5: Bridge Out Token ---');
         // Execute bridge out token example on L2 chain
         await bridgeOutTokenExample();
+
+        // Example 6: Verify a signature on L2
+        console.log('\n--- Example 6: Verify Signature on L2 ---');
+        // Execute verify signature example on L2 chain
+        await verifySignatureExample();
 
         console.log('\n=== Examples completed ===');
     } catch (error) {
