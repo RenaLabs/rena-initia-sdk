@@ -1,5 +1,6 @@
 import { MsgExecute, MsgInitiateTokenDeposit, MsgSend, Coin, MsgInitiateTokenWithdrawal } from '@initia/initia.js'
 import { toBigInt } from "ethers";
+import { contractConfigs } from '../config';
 
 /**
  * Creates a message to upload a signature to a smart contract
@@ -12,20 +13,32 @@ import { toBigInt } from "ethers";
  * @param args - Arguments for the function
  * @returns A MsgExecute instance for uploading a signature
  */
-export function uploadSignature(
+export function initializePublicKey(
     sender: string,
-    contractAddress: string,
-    module: string,
-    functionName: string,
-    typeArgs: any[],
     args: any[]
 ) {
     const msg = new MsgExecute(
         sender,
-        contractAddress,
-        module,
-        functionName,
-        typeArgs,
+        contractConfigs.contractAddress,
+        'agent_config_aggregate',
+        'create',
+        [],
+        args
+    )
+
+    return msg;
+}
+
+export function verifySignature(
+    sender: string,
+    args: any[]
+) {
+    const msg = new MsgExecute(
+        sender,
+        contractConfigs.contractAddress,
+        'agent_tweet_event_aggregate',
+        'create',
+        [],
         args
     )
 
@@ -118,3 +131,13 @@ export function u256ToUuid(u256: bigint): string {
         uuidHex.slice(20),
     ].join("-");
 }
+
+
+
+export const hexToString = (hex: any) => {
+    let str = '';
+    for (let i = 0; i < hex.length; i += 2) {
+        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    }
+    return str;
+};

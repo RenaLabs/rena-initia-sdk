@@ -71,4 +71,9 @@ export class InitiaSDK {
         });
         return coins;
     }
+
+    async getTxStatus(txHash: string) {
+        const tx = await this.rest.tx.txInfo(txHash)
+        return tx
+    }
 }
