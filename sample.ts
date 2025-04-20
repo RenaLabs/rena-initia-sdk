@@ -157,6 +157,9 @@ async function initializePublicKeyExample() {
  */
 async function verifySignatureExample() {
     try {
+        const publicKey = await rollupSdk.getTEEPublicKey();
+        console.log('Public Key:', publicKey);
+
         const l2Sdk = createSdk(CHAINS.ROLLUP.id);
         const senderAddress = await l2Sdk.getAccountAddress();
 
@@ -226,16 +229,16 @@ async function main() {
         // Uncomment example functions below to execute them
 
         // console.log('\n--- Example 2: Send Tokens ---');
-        await sendTokensExample();
+        // await sendTokensExample();
 
         // console.log('\n--- Example 3: Bridge Token to L2 ---');
-        await bridgeTokenExample();
+        // await bridgeTokenExample();
 
         // console.log('\n--- Example 4: Bridge Out Token from L2 ---');
-        await bridgeOutTokenExample();
+        // await bridgeOutTokenExample();
 
         // console.log('\n--- Example 5: Initialize Public Key ---');
-        await initializePublicKeyExample();
+        // await initializePublicKeyExample();
 
         console.log('\n--- Example 6: Verify Signature on L2 ---');
         await verifySignatureExample();

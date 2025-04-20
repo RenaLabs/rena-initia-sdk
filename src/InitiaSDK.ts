@@ -76,4 +76,9 @@ export class InitiaSDK {
         const tx = await this.rest.tx.txInfo(txHash)
         return tx
     }
+
+    async getTEEPublicKey() {
+        const publicKey = await this.rest.move.view('0x6a7e1a7e21a1342bdfcb9f21a7c94e39f60b8741', 'agent_config', 'singleton_public_key', [])
+        return publicKey.data;
+    }
 }
