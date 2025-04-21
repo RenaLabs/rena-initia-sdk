@@ -1,6 +1,6 @@
 import { InitiaSDK } from './src/InitiaSDK';
 import dotenv from 'dotenv';
-import { sendToken, bridgeToken, bridgeOutToken, initializePublicKey, verifySignature, hexToString } from './src/tee';
+import { sendToken, bridgeToken, bridgeOutToken, initializePublicKey, verifySignature, hexToString, updatePublicKey } from './src/tee';
 import { bcs, Coin } from '@initia/initia.js';
 import { contractConfigs, getChainConfig } from './src/config';
 
@@ -164,7 +164,7 @@ async function verifySignatureExample() {
         const senderAddress = await l2Sdk.getAccountAddress();
 
         // Sample data
-        const requestId = '1f961e1f-cef8-40da-bfa6-6e44e8791a84';
+        const requestId = '1f961e1f-cef8-40da-bfa6-6e44e8791a85';
         const message = {
             mediaIds: null,
             replyTweetId: "",
@@ -215,6 +215,22 @@ async function getTxStatus(txHash = '051A2BF39B70C0218E1172846E17DF158E1135E1292
     }
 }
 
+/** Example 8: Update public key in TEE */
+async function updatePublicKeyExample() {
+    try {
+        const senderAddress = await rollupSdk.getAccountAddress();
+        const publicKeyHex = contractConfigs.TEEPublicKey;
+        const args = [toBcsVector(publicKeyHex)];
+
+        const msg = updatePublicKey(senderAddress, args);
+
+        return await signAndBroadcast(rollupSdk, [msg], 'Sample public key update');
+    } catch (error) {
+        console.error('Error updating public key:', error);
+        throw error;
+    }
+}
+
 /**
  * Main function to run examples
  */
@@ -241,10 +257,15 @@ async function main() {
         // await initializePublicKeyExample();
 
         console.log('\n--- Example 6: Verify Signature on L2 ---');
-        await verifySignatureExample();
+        // await verifySignatureExample();
 
         // console.log('\n--- Example 7: Get Transaction Status ---');
         await getTxStatus();
+
+        console.log('\n--- Example 8: Update Public Key ---');
+        // await updatePublicKeyExample();
+        const publicKey = await rollupSdk.getTEEPublicKey();
+        console.log('Current Public Key:', publicKey);
 
         console.log('\n=== Examples completed ===');
     } catch (error) {

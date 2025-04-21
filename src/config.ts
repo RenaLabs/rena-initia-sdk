@@ -14,7 +14,7 @@ export const chainConfigs = {
 
 export const contractConfigs = {
     contractAddress: '0x6a7e1a7e21a1342bdfcb9f21a7c94e39f60b8741',
-    TEEPublicKey: '2d852dae1fc60161f3fc53af77fc4a04dcbddbc9b4d0a3b7c4f4d0c71ae01c8f22aa2800e603267356d9a4323b81301a874c01ad7404c0de95b3a60550ea3621'
+    TEEPublicKey: '1235a513eaa3fef0651866a11e9bd9e2eab63824f5fb3aaa13f85d9cc9a48025a695675097cc2badaacc66505cb5367144cbb8690e91c1b19d631c0ce3a4c012'
 }
 
 // Helper function to get config based on chain ID
