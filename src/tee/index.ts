@@ -29,6 +29,21 @@ export function initializePublicKey(
     return msg;
 }
 
+export function updatePublicKey(
+    sender: string,
+    args: any[]
+) {
+    const msg = new MsgExecute(
+        sender,
+        contractConfigs.contractAddress,
+        'agent_config_aggregate',
+        'update',
+        [],
+        args
+    )
+
+    return msg;
+}
 export function verifySignature(
     sender: string,
     args: any[]
