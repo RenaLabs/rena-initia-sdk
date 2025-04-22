@@ -14,6 +14,7 @@ export const chainConfigs = {
 
 export const contractConfigs = {
     contractAddress: '0x6a7e1a7e21a1342bdfcb9f21a7c94e39f60b8741',
+    vipContractAddress: '0xea4f0556c063e4894e934602a971625c700df97b',
     TEEPublicKey: '1235a513eaa3fef0651866a11e9bd9e2eab63824f5fb3aaa13f85d9cc9a48025a695675097cc2badaacc66505cb5367144cbb8690e91c1b19d631c0ce3a4c012'
 }
 
