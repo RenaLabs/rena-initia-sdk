@@ -1,13 +1,15 @@
 import { InitiaSDK } from './src/InitiaSDK';
 import dotenv from 'dotenv';
 import { sendToken, bridgeToken, bridgeOutToken, initializePublicKey, verifySignature, hexToString, updatePublicKey } from './src/tee';
+import { updateVIPStage } from './src/vip';
 import { bcs, Coin } from '@initia/initia.js';
-import { contractConfigs, getChainConfig } from './src/config';
+import { contractConfigs, chainConfigs, TeePublicKeyVersionManager } from './src/config';
 
 // Load environment variables from .env file
 dotenv.config();
 
-// Chain configuration
+// Chain configuration for testnet
+const NETWORK: 'testnet' | 'mainnet' = 'testnet';
 const CHAINS = {
     MAIN: {
         id: 'initiation-2',
@@ -15,22 +17,24 @@ const CHAINS = {
     },
     ROLLUP: {
         id: 'nuwa-rollup-1',
-    }
+    },
+    MAINNETROLLUP: {
+        id: 'rena-nuwa-1',
+    },
+    TESTNETMAIN: {
+        id: 'initiation-2',
+    },
+
 };
 
 // SDK initialization function
-const createSdk = (chainId: string) => {
-    const config = getChainConfig(chainId);
-    return new InitiaSDK(
-    process.env.MNEMONIC ?? '',
-        chainId,
-        config.rpcUrl
-    );
-};
+
 
 // Initialize SDKs
-const mainSdk = createSdk(CHAINS.MAIN.id);
-const rollupSdk = createSdk(CHAINS.ROLLUP.id);
+const mainnetRollupSdk = new InitiaSDK(process.env.MNEMONIC_1 ?? '', 'mainnet', CHAINS.MAINNETROLLUP.id);
+const mainnetl1Sdk = new InitiaSDK(process.env.MNEMONIC ?? '', 'mainnet', CHAINS.MAIN.id);
+const testnetrollupSdk = new InitiaSDK(process.env.MNEMONIC ?? '', 'testnet', CHAINS.ROLLUP.id);
+const testnetl1Sdk = new InitiaSDK(process.env.MNEMONIC ?? '', 'testnet', CHAINS.MAIN.id);
 
 // Utility function for standardized transaction signing and broadcasting
 const signAndBroadcast = async (sdk: InitiaSDK, msgs: any[], memo: string) => {
@@ -62,10 +66,10 @@ const toBcsVector = (data: string | Buffer, format: 'utf-8' | 'hex' = 'hex') => 
  */
 async function getAccountInfo() {
     try {
-        const address = await mainSdk.getAccountAddress();
+        const address = await testnetrollupSdk.getAccountAddress();
         console.log('Account Address:', address);
 
-        const balance = await mainSdk.getAccountBalance(address);
+        const balance = await testnetrollupSdk.getAccountBalance();
         console.log('Account Balance:', balance);
 
         return { address, balance };
@@ -80,7 +84,7 @@ async function getAccountInfo() {
  */
 async function sendTokensExample() {
     try {
-        const senderAddress = await mainSdk.getAccountAddress();
+        const senderAddress = await testnetl1Sdk.getAccountAddress();
         const recipientAddress = CHAINS.MAIN.recipientAddress;
         const amount = '1000uinit';
 
@@ -88,7 +92,7 @@ async function sendTokensExample() {
 
         const sendMsg = sendToken(senderAddress, recipientAddress, amount);
 
-        return await signAndBroadcast(mainSdk, [sendMsg], 'Sample token transfer');
+        return await signAndBroadcast(testnetl1Sdk, [sendMsg], 'Sample token transfer');
     } catch (error) {
         console.error('Error sending tokens:', error);
         throw error;
@@ -100,14 +104,15 @@ async function sendTokensExample() {
  */
 async function bridgeTokenExample() {
     try {
-        const senderAddress = await mainSdk.getAccountAddress();
+        const senderAddress = await testnetl1Sdk.getAccountAddress();
+        // Bridge ID for testnet - may need to be updated based on actual testnet bridge ID
         const bridgeId = 1152;
         const to = CHAINS.MAIN.recipientAddress;
         const amount = new Coin('uinit', '1000000');
 
         const msg = bridgeToken(senderAddress, bridgeId, to, amount);
 
-        return await signAndBroadcast(mainSdk, [msg], 'Sample token bridge');
+        return await signAndBroadcast(testnetl1Sdk, [msg], 'Sample token bridge');
     } catch (error) {
         console.error('Error bridging token:', error);
         throw error;
@@ -119,9 +124,10 @@ async function bridgeTokenExample() {
  */
 async function bridgeOutTokenExample() {
     try {
-        const l2Sdk = createSdk(CHAINS.ROLLUP.id);
+        const l2Sdk = testnetrollupSdk;
         const senderAddress = await l2Sdk.getAccountAddress();
         const to = CHAINS.MAIN.recipientAddress;
+        // Using testnet L2 token address
         const l2Token = 'l2/6df67ba2b8890ef45c525bdccac4d69e48502e9ee482fac8cc6eb9036c2fb364';
         const amount = new Coin(l2Token, '10000');
 
@@ -139,13 +145,14 @@ async function bridgeOutTokenExample() {
  */
 async function initializePublicKeyExample() {
     try {
-        const senderAddress = await rollupSdk.getAccountAddress();
-        const publicKeyHex = contractConfigs.TEEPublicKey;
+        const senderAddress = await testnetl1Sdk.getAccountAddress();
+        const network = 'testnet';
+        const publicKeyHex = TeePublicKeyVersionManager[1];
         const args = [toBcsVector(publicKeyHex)];
 
-        const msg = initializePublicKey(senderAddress, args);
+        const msg = initializePublicKey(senderAddress, args, network);
 
-        return await signAndBroadcast(rollupSdk, [msg], 'Sample public key initialization');
+        return await signAndBroadcast(testnetl1Sdk, [msg], 'Sample public key initialization');
     } catch (error) {
         console.error('Error initializing public key:', error);
         throw error;
@@ -157,38 +164,39 @@ async function initializePublicKeyExample() {
  */
 async function verifySignatureExample() {
     try {
-        const publicKey = await rollupSdk.getTEEPublicKey();
+        const publicKey = await mainnetRollupSdk.getTEEPublicKey();
         console.log('Public Key:', publicKey);
 
-        const l2Sdk = createSdk(CHAINS.ROLLUP.id);
+        const l2Sdk = mainnetRollupSdk;
         const senderAddress = await l2Sdk.getAccountAddress();
-
+        console.log('Sender Address:', senderAddress);
         // Sample data
         const requestId = '1f961e1f-cef8-40da-bfa6-6e44e8791a85';
-        const message = {
-            mediaIds: null,
-            replyTweetId: "",
-            text: "\"Spotted the fluffies staging a coup for the comfiest sunbeam. Their manifesto? More belly rubs, fewer Mondays. Rebel leadership applications open til sunset.\"",
-            timestamp: 1745074851,
-            tweetId: "1913608741510959318"
-        };
-        const signature = '2b1f9aee68e1a1b131b6b7142af0aeb52567e84faa6058db3a2e7e75a5a668b831a5564151a913c43d2dadb641428049069a11c08accbd8446713a9d65930ba11c';
+        // const message = {
+        //     mediaIds: null,
+        //     replyTweetId: "",
+        //     text: "\"Spotted the fluffies staging a coup for the comfiest sunbeam. Their manifesto? More belly rubs, fewer Mondays. Rebel leadership applications open til sunset.\"",
+        //     timestamp: 1745074851,
+        //     tweetId: "1913608741510959318"
+        // };
+        const signature = 'ae98ff54f1fa1e3531735b04d3b17e484ed5a16fecf2b44ecddab5b8b4660ad908784aa85cd24394c6cc85bee30b74fdc4b16317377c54ed51769f13dac67ac01b';
         const timestamp = 1745089251;
 
         // Data preparation
         const requestIdHex = Buffer.from(requestId, 'utf-8').toString('hex');
-        const messageInBase64 = Buffer.from(JSON.stringify(message)).toString('base64');
+        const messageInBase64 = 'eyJtZWRpYUlkcyI6bnVsbCwicmVwbHlUd2VldElkIjoiIiwidGV4dCI6IkNlbGVicmF0aW5nIGFub3RoZXIgbWlsZXN0b25lIHdpdGggdGhlIHRlYW0gdG9kYXkuIFRoZSBqb3VybmV54oCZcyBiZWVuIHdpbGQsIGJ1dCBidWlsZGluZyBzb21ldGhpbmcgdGhhdCBhY3R1YWxseSBoZWxwcyBwZW9wbGUgbWFrZXMgaXQgYWxsIHdvcnRoIGl0LiBXaGF04oCZcyBuZXh0PyBMZXTigJlzIGtlZXAgcHVzaGluZyBib3VuZGFyaWVzLCB5YSBrbm93PyIsInRpbWVzdGFtcCI6MTc0NTIwMDgxNywidHdlZXRJZCI6IjE5MTQxMzcwNzk4MzY5OTE3MjkifQ==';
         const messageHex = Buffer.from(messageInBase64, 'utf-8').toString('hex');
 
         // Prepare arguments
         const args = [
             toBcsVector(requestIdHex),
+            bcs.u32().serialize(1).toBase64(), //version number
             toBcsVector(messageHex),
             toBcsVector(signature),
             bcs.u64().serialize(timestamp).toBase64(),
         ];
 
-        const msg = verifySignature(senderAddress, args);
+        const msg = verifySignature(senderAddress, args, 'mainnet');
 
         return await signAndBroadcast(l2Sdk, [msg], 'Sample signature verification');
     } catch (error) {
@@ -206,7 +214,7 @@ async function verifySignatureExample() {
  */
 async function getTxStatus(txHash = '051A2BF39B70C0218E1172846E17DF158E1135E12922DC7BB24639EF98FC126C') {
     try {
-        const tx = await mainSdk.getTxStatus(txHash);
+        const tx = await testnetrollupSdk.getTxStatus(txHash);
         console.log('Transaction status:', tx);
         return tx;
     } catch (error) {
@@ -218,15 +226,36 @@ async function getTxStatus(txHash = '051A2BF39B70C0218E1172846E17DF158E1135E1292
 /** Example 8: Update public key in TEE */
 async function updatePublicKeyExample() {
     try {
-        const senderAddress = await rollupSdk.getAccountAddress();
-        const publicKeyHex = contractConfigs.TEEPublicKey;
+        const senderAddress = await testnetl1Sdk.getAccountAddress();
+        const network = 'testnet';
+        const publicKeyHex = TeePublicKeyVersionManager[1];
         const args = [toBcsVector(publicKeyHex)];
 
-        const msg = updatePublicKey(senderAddress, args);
+        const msg = updatePublicKey(senderAddress, args, network);
 
-        return await signAndBroadcast(rollupSdk, [msg], 'Sample public key update');
+        return await signAndBroadcast(testnetl1Sdk, [msg], 'Sample public key update');
     } catch (error) {
         console.error('Error updating public key:', error);
+        throw error;
+    }
+}
+
+/**
+ * Example 9: Update VIP stage
+ */
+async function updateVIPStageExample() {
+    try {
+        const senderAddress = await mainnetRollupSdk.getAccountAddress();
+        const network = 'mainnet';
+        const args = [
+            bcs.u64().serialize(0).toBase64(),
+        ];
+
+        const msg = updateVIPStage(senderAddress, args, network);
+
+        return await signAndBroadcast(mainnetRollupSdk, [msg], 'Sample VIP stage update');
+    } catch (error) {
+        console.error('Error updating VIP stage:', error);
         throw error;
     }
 }
@@ -236,7 +265,10 @@ async function updatePublicKeyExample() {
  */
 async function main() {
     try {
-        console.log('=== Initia SDK Examples ===');
+        console.log(`=== Initia SDK Examples (${NETWORK.charAt(0).toUpperCase() + NETWORK.slice(1)}) ===`);
+        console.log(`Network: ${NETWORK}`);
+        console.log(`Main Chain: ${CHAINS.MAIN.id}`);
+        console.log(`Rollup Chain: ${CHAINS.ROLLUP.id}`);
 
         // Example 1: Get account information
         console.log('\n--- Example 1: Get Account Information ---');
@@ -257,15 +289,17 @@ async function main() {
         // await initializePublicKeyExample();
 
         console.log('\n--- Example 6: Verify Signature on L2 ---');
-        // await verifySignatureExample();
+        await verifySignatureExample();
 
-        // console.log('\n--- Example 7: Get Transaction Status ---');
-        await getTxStatus();
+        console.log('\n--- Example 7: Get Transaction Status ---');
+        // await getTxStatus();
 
         console.log('\n--- Example 8: Update Public Key ---');
         // await updatePublicKeyExample();
-        const publicKey = await rollupSdk.getTEEPublicKey();
-        console.log('Current Public Key:', publicKey);
+        // const publicKey = await testnetrollupSdk.getTEEPublicKey();
+
+        console.log('\n--- Example 9: Update VIP Stage ---');
+        // await updateVIPStageExample();
 
         console.log('\n=== Examples completed ===');
     } catch (error) {
