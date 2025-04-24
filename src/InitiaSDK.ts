@@ -1,5 +1,8 @@
 import { RESTClient, Wallet, MnemonicKey } from '@initia/initia.js'
-import { getChainConfig } from './config'
+import { chainConfigs, contractConfigs } from './config'
+import { bcs } from '@initia/initia.js'
+
+type NetworkType = 'testnet' | 'mainnet';
 
 /**
  * Rena Initia SDK
@@ -18,20 +21,34 @@ export class InitiaSDK {
     /** Wallet instance for signing and broadcasting transactions */
     public wallet: Wallet;
 
+    /** Network type (testnet or mainnet) */
+    public network: NetworkType;
+
     /**
      * Creates a new instance of the InitiaSDK
      * 
      * @param mnemonic - The mnemonic phrase for the wallet
      * @param chainId - The chain ID for the Initia blockchain
-     * @param rpcUrl - The RPC URL for the Initia blockchain (defaults to testnet)
+     * @param rpcUrl - The RPC URL for the Initia blockchain
+     * @param network - The network type ('testnet' or 'mainnet'), defaults to 'testnet'
      */
-    constructor(mnemonic: string, chainId: string, rpcUrl: string) {
-        const config = getChainConfig(chainId);
+    constructor(mnemonic: string, network: NetworkType = 'testnet', chainId: string) {
+        this.network = network;
 
-        this.rest = new RESTClient(rpcUrl, {
+        const networkConfig = chainConfigs[network as keyof typeof chainConfigs];
+        if (!networkConfig) {
+            throw new Error(`Config not found for network: ${network}`);
+        }
+
+        const chainConfig = networkConfig[chainId as keyof typeof networkConfig];
+        if (!chainConfig) {
+            throw new Error(`Config not found for network: ${network}, chain: ${chainId}`);
+        }
+
+        this.rest = new RESTClient(chainConfig.rpcUrl, {
             chainId: chainId,
-            gasPrices: config.gasPrices,
-            gasAdjustment: config.gasAdjustment,
+            gasPrices: chainConfig.gasPrices,
+            gasAdjustment: chainConfig.gasAdjustment,
         })
 
         this.key = new MnemonicKey({
@@ -44,6 +61,7 @@ export class InitiaSDK {
         this.wallet = new Wallet(this.rest, this.key)
 
         console.log(`Public Key: ${this.key.accAddress} is imported`)
+        console.log(`Using network: ${network}`)
     }
 
     /**
@@ -72,13 +90,24 @@ export class InitiaSDK {
         return coins;
     }
 
+    /**
+     * Gets the status of a transaction by its hash
+     * 
+     * @param txHash - The transaction hash to lookup
+     * @returns The transaction status and details
+     */
     async getTxStatus(txHash: string) {
         const tx = await this.rest.tx.txInfo(txHash)
         return tx
     }
 
-    async getTEEPublicKey() {
-        const publicKey = await this.rest.move.view('0x6a7e1a7e21a1342bdfcb9f21a7c94e39f60b8741', 'agent_config', 'singleton_public_key', [])
+    /**
+     * Gets the TEE public key from the contract
+     * 
+     * @returns The public key data
+     */
+    async getTEEPublicKey(network: NetworkType = this.network) {
+        const publicKey = await this.rest.move.view(contractConfigs[network as keyof typeof contractConfigs].teeVerifyContract, 'public_key', 'view_public_key', [], [bcs.u32().serialize(1).toBase64()])
         return publicKey.data;
     }
 }

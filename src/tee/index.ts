@@ -2,24 +2,24 @@ import { MsgExecute, MsgInitiateTokenDeposit, MsgSend, Coin, MsgInitiateTokenWit
 import { toBigInt } from "ethers";
 import { contractConfigs } from '../config';
 
+type NetworkType = 'testnet' | 'mainnet';
+
 /**
  * Creates a message to upload a signature to a smart contract
  * 
  * @param sender - The address of the sender
- * @param contractAddress - The address of the smart contract
- * @param module - The module name in the smart contract
- * @param functionName - The function name to call
- * @param typeArgs - Type arguments for the function
  * @param args - Arguments for the function
+ * @param network - The network type ('testnet' or 'mainnet'), defaults to 'testnet'
  * @returns A MsgExecute instance for uploading a signature
  */
 export function initializePublicKey(
     sender: string,
-    args: any[]
+    args: any[],
+    network: NetworkType = 'mainnet'
 ) {
     const msg = new MsgExecute(
         sender,
-        contractConfigs.contractAddress,
+        contractConfigs[network as keyof typeof contractConfigs].teeVerifyContract,
         'agent_config_aggregate',
         'create',
         [],
@@ -31,11 +31,12 @@ export function initializePublicKey(
 
 export function updatePublicKey(
     sender: string,
-    args: any[]
+    args: any[],
+    network: NetworkType = 'mainnet'
 ) {
     const msg = new MsgExecute(
         sender,
-        contractConfigs.contractAddress,
+        contractConfigs[network as keyof typeof contractConfigs].teeVerifyContract,
         'agent_config_aggregate',
         'update',
         [],
@@ -44,13 +45,15 @@ export function updatePublicKey(
 
     return msg;
 }
+
 export function verifySignature(
     sender: string,
-    args: any[]
+    args: any[],
+    network: NetworkType = 'mainnet'
 ) {
     const msg = new MsgExecute(
         sender,
-        contractConfigs.contractAddress,
+        contractConfigs[network as keyof typeof contractConfigs].teeVerifyContract,
         'agent_tweet_event_aggregate',
         'create',
         [],
