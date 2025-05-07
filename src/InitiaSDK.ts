@@ -4,6 +4,13 @@ import { bcs } from '@initia/initia.js'
 
 type NetworkType = 'testnet' | 'mainnet';
 
+// Define the chain configuration type
+interface ChainConfig {
+    rpcUrl: string;
+    gasPrices: string;
+    gasAdjustment: string;
+}
+
 /**
  * Rena Initia SDK
  * 
@@ -32,7 +39,7 @@ export class InitiaSDK {
      * @param rpcUrl - The RPC URL for the Initia blockchain
      * @param network - The network type ('testnet' or 'mainnet'), defaults to 'testnet'
      */
-    constructor(mnemonic: string, network: NetworkType = 'testnet', chainId: string) {
+    constructor(mnemonic: string, network: NetworkType = 'mainnet', chainId: string = 'interwoven-1') {
         this.network = network;
 
         const networkConfig = chainConfigs[network as keyof typeof chainConfigs];
@@ -40,7 +47,7 @@ export class InitiaSDK {
             throw new Error(`Config not found for network: ${network}`);
         }
 
-        const chainConfig = networkConfig[chainId as keyof typeof networkConfig];
+        const chainConfig = networkConfig[chainId as keyof typeof networkConfig] as ChainConfig;
         if (!chainConfig) {
             throw new Error(`Config not found for network: ${network}, chain: ${chainId}`);
         }
@@ -106,8 +113,8 @@ export class InitiaSDK {
      * 
      * @returns The public key data
      */
-    async getTEEPublicKey(network: NetworkType = this.network) {
-        const publicKey = await this.rest.move.view(contractConfigs[network as keyof typeof contractConfigs].teeVerifyContract, 'public_key', 'view_public_key', [], [bcs.u32().serialize(1).toBase64()])
+    async getTEEPublicKey(network: NetworkType = this.network, version: number = 1) {
+        const publicKey = await this.rest.move.view(contractConfigs[network as keyof typeof contractConfigs].teeVerifyContract, 'public_key', 'view_public_key', [], [bcs.u32().serialize(version).toBase64()])
         return publicKey.data;
     }
 }
