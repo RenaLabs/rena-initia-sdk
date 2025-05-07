@@ -4,15 +4,8 @@ import { contractConfigs } from '../config';
 
 type NetworkType = 'testnet' | 'mainnet';
 
-/**
- * Creates a message to upload a signature to a smart contract
- * 
- * @param sender - The address of the sender
- * @param args - Arguments for the function
- * @param network - The network type ('testnet' or 'mainnet'), defaults to 'testnet'
- * @returns A MsgExecute instance for uploading a signature
- */
-export function initializePublicKey(
+
+export function createPublicKey(
     sender: string,
     args: any[],
     network: NetworkType = 'mainnet'
@@ -20,25 +13,8 @@ export function initializePublicKey(
     const msg = new MsgExecute(
         sender,
         contractConfigs[network as keyof typeof contractConfigs].teeVerifyContract,
-        'agent_config_aggregate',
+        'public_key_aggregate',
         'create',
-        [],
-        args
-    )
-
-    return msg;
-}
-
-export function updatePublicKey(
-    sender: string,
-    args: any[],
-    network: NetworkType = 'mainnet'
-) {
-    const msg = new MsgExecute(
-        sender,
-        contractConfigs[network as keyof typeof contractConfigs].teeVerifyContract,
-        'agent_config_aggregate',
-        'update',
         [],
         args
     )

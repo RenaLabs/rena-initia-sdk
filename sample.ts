@@ -1,8 +1,8 @@
 import { InitiaSDK } from './src/InitiaSDK';
 import dotenv from 'dotenv';
-import { sendToken, bridgeToken, bridgeOutToken, initializePublicKey, verifySignature, hexToString, updatePublicKey } from './src/tee';
+import { sendToken, bridgeToken, bridgeOutToken, verifySignature, hexToString, createPublicKey } from './src/tee';
 import { updateVIPStage } from './src/vip';
-import { bcs, Coin } from '@initia/initia.js';
+import { bcs, Coin, MsgUpdateACL, AccAddress, MsgExecuteMessages } from '@initia/initia.js';
 import { contractConfigs, chainConfigs, TeePublicKeyVersionManager } from './src/config';
 
 // Load environment variables from .env file
@@ -12,14 +12,14 @@ dotenv.config();
 const NETWORK: 'testnet' | 'mainnet' = 'testnet';
 const CHAINS = {
     MAIN: {
-        id: 'initiation-2',
+        id: 'interwoven-1',
         recipientAddress: 'init1dflp5l3p5y6zhh7tnus60j2w88mqhp6p2tpncs',
-    },
-    ROLLUP: {
-        id: 'nuwa-rollup-1',
     },
     MAINNETROLLUP: {
         id: 'rena-nuwa-1',
+    },
+    ROLLUP: {
+        id: 'nuwa-rollup-1',
     },
     TESTNETMAIN: {
         id: 'initiation-2',
@@ -31,17 +31,16 @@ const CHAINS = {
 
 
 // Initialize SDKs
-const mainnetRollupSdk = new InitiaSDK(process.env.MNEMONIC_1 ?? '', 'mainnet', CHAINS.MAINNETROLLUP.id);
+const mainnetRollupSdk = new InitiaSDK(process.env.MNEMONIC_2 ?? '', 'mainnet', CHAINS.MAINNETROLLUP.id);
 const mainnetl1Sdk = new InitiaSDK(process.env.MNEMONIC ?? '', 'mainnet', CHAINS.MAIN.id);
 const testnetrollupSdk = new InitiaSDK(process.env.MNEMONIC ?? '', 'testnet', CHAINS.ROLLUP.id);
-const testnetl1Sdk = new InitiaSDK(process.env.MNEMONIC ?? '', 'testnet', CHAINS.MAIN.id);
+const testnetl1Sdk = new InitiaSDK(process.env.MNEMONIC ?? '', 'testnet', CHAINS.TESTNETMAIN.id);
 
 // Utility function for standardized transaction signing and broadcasting
-const signAndBroadcast = async (sdk: InitiaSDK, msgs: any[], memo: string) => {
+const signAndBroadcast = async (sdk: InitiaSDK, msgs: any[], memo: string = "") => {
     try {
         const signedTx = await sdk.wallet.createAndSignTx({
             msgs,
-            memo,
         });
         const result = await sdk.rest.tx.broadcast(signedTx);
         console.log('Transaction result:', result);
@@ -104,15 +103,15 @@ async function sendTokensExample() {
  */
 async function bridgeTokenExample() {
     try {
-        const senderAddress = await testnetl1Sdk.getAccountAddress();
+        const senderAddress = await mainnetl1Sdk.getAccountAddress();
         // Bridge ID for testnet - may need to be updated based on actual testnet bridge ID
-        const bridgeId = 1152;
+        const bridgeId = 30;
         const to = CHAINS.MAIN.recipientAddress;
         const amount = new Coin('uinit', '1000000');
 
-        const msg = bridgeToken(senderAddress, bridgeId, to, amount);
+        const msg = bridgeToken(senderAddress, bridgeId, senderAddress, amount);
 
-        return await signAndBroadcast(testnetl1Sdk, [msg], 'Sample token bridge');
+        return await signAndBroadcast(mainnetl1Sdk, [msg], 'Sample token bridge');
     } catch (error) {
         console.error('Error bridging token:', error);
         throw error;
@@ -150,7 +149,7 @@ async function initializePublicKeyExample() {
         const publicKeyHex = TeePublicKeyVersionManager[1];
         const args = [toBcsVector(publicKeyHex)];
 
-        const msg = initializePublicKey(senderAddress, args, network);
+        const msg = createPublicKey(senderAddress, args, network);
 
         return await signAndBroadcast(testnetl1Sdk, [msg], 'Sample public key initialization');
     } catch (error) {
@@ -223,17 +222,17 @@ async function getTxStatus(txHash = '051A2BF39B70C0218E1172846E17DF158E1135E1292
     }
 }
 
-/** Example 8: Update public key in TEE */
+/** Example 8: Update public key from TEE */
 async function updatePublicKeyExample() {
     try {
-        const senderAddress = await testnetl1Sdk.getAccountAddress();
-        const network = 'testnet';
-        const publicKeyHex = TeePublicKeyVersionManager[1];
-        const args = [toBcsVector(publicKeyHex)];
+        const senderAddress = await mainnetRollupSdk.getAccountAddress();
+        const network = 'mainnet';
+        const publicKeyHex = TeePublicKeyVersionManager[2];
+        const args = [bcs.u32().serialize(2).toBase64(), toBcsVector(publicKeyHex)];
 
-        const msg = updatePublicKey(senderAddress, args, network);
+        const msg = createPublicKey(senderAddress, args, network);
 
-        return await signAndBroadcast(testnetl1Sdk, [msg], 'Sample public key update');
+        return await signAndBroadcast(mainnetRollupSdk, [msg], 'public key update');
     } catch (error) {
         console.error('Error updating public key:', error);
         throw error;
@@ -260,6 +259,26 @@ async function updateVIPStageExample() {
     }
 }
 
+
+async function setACLList() {
+
+    const senderAddress = await mainnetRollupSdk.getAccountAddress();
+    console.log(senderAddress);
+
+    const msg = new MsgExecuteMessages(senderAddress, [
+        // The key must be an admin key
+        new MsgUpdateACL(
+            'init1gz9n8jnu9fgqw7vem9ud67gqjk5q4m2w0aejne',
+            'init18d5t3pe4rvpm7mezh4apdvanpxej2jxz2jvl4d',
+            true,
+        ),
+    ]);
+
+    // const msg = new MsgUpdateACL('init18d5t3pe4rvpm7mezh4apdvanpxej2jxz2jvl4d', AccAddress.fromHex('0x3b68b887351b03bf6f22bd7a16b3b309b32548c2'), true);
+    console.log(msg);
+    const tx = await signAndBroadcast(mainnetRollupSdk, [msg]);
+    console.log(tx);
+}
 /**
  * Main function to run examples
  */
@@ -288,18 +307,22 @@ async function main() {
         // console.log('\n--- Example 5: Initialize Public Key ---');
         // await initializePublicKeyExample();
 
-        console.log('\n--- Example 6: Verify Signature on L2 ---');
-        await verifySignatureExample();
+        // console.log('\n--- Example 6: Verify Signature on L2 ---');
+        // await verifySignatureExample();
 
-        console.log('\n--- Example 7: Get Transaction Status ---');
+        // console.log('\n--- Example 7: Get Transaction Status ---');
         // await getTxStatus();
 
         console.log('\n--- Example 8: Update Public Key ---');
-        // await updatePublicKeyExample();
-        // const publicKey = await testnetrollupSdk.getTEEPublicKey();
+        await updatePublicKeyExample();
+        const publicKey = await mainnetRollupSdk.getTEEPublicKey('mainnet', 2);
+        console.log(publicKey);
 
-        console.log('\n--- Example 9: Update VIP Stage ---');
+        // console.log('\n--- Example 9: Update VIP Stage ---');
         // await updateVIPStageExample();
+
+        // console.log('\n--- Example 10: Set ACL List ---');
+        // await setACLList();
 
         console.log('\n=== Examples completed ===');
     } catch (error) {
